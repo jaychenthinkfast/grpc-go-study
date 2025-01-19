@@ -1,4 +1,4 @@
-module hello-normal
+module hello
 
 go 1.22.0
 

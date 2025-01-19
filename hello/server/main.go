@@ -3,7 +3,8 @@ package main
 import (
 	"context"
 	"google.golang.org/grpc"
-	. "hello-normal/hello"
+	. "hello/hello"
+	"io"
 	"log"
 	"net"
 )
@@ -15,6 +16,25 @@ func (p *HelloServiceImpl) Hello(
 ) (*String, error) {
 	reply := &String{Value: "hello:" + args.GetValue()}
 	return reply, nil
+}
+
+func (p *HelloServiceImpl) Channel(stream HelloService_ChannelServer) error {
+	for {
+		args, err := stream.Recv()
+		if err != nil {
+			if err == io.EOF {
+				return nil
+			}
+			return err
+		}
+
+		reply := &String{Value: "hello:" + args.GetValue()}
+
+		err = stream.Send(reply)
+		if err != nil {
+			return err
+		}
+	}
 }
 
 func main() {

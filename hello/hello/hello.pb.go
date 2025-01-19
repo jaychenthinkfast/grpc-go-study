@@ -70,14 +70,15 @@ func init() {
 func init() { proto.RegisterFile("hello/hello.proto", fileDescriptor_49e10c42a6c052d6) }
 
 var fileDescriptor_49e10c42a6c052d6 = []byte{
-	// 106 bytes of a gzipped FileDescriptorProto
+	// 123 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xe2, 0x12, 0xcc, 0x48, 0xcd, 0xc9,
 	0xc9, 0xd7, 0x07, 0x93, 0x7a, 0x05, 0x45, 0xf9, 0x25, 0xf9, 0x42, 0xac, 0x60, 0x8e, 0x92, 0x1c,
 	0x17, 0x5b, 0x70, 0x49, 0x51, 0x66, 0x5e, 0xba, 0x90, 0x08, 0x17, 0x6b, 0x59, 0x62, 0x4e, 0x69,
-	0xaa, 0x04, 0xa3, 0x02, 0xa3, 0x06, 0x67, 0x10, 0x84, 0x63, 0x64, 0xca, 0xc5, 0xe3, 0x01, 0x52,
+	0xaa, 0x04, 0xa3, 0x02, 0xa3, 0x06, 0x67, 0x10, 0x84, 0x63, 0x94, 0xc4, 0xc5, 0xe3, 0x01, 0x52,
 	0x18, 0x9c, 0x5a, 0x54, 0x96, 0x99, 0x9c, 0x2a, 0xa4, 0xca, 0xc5, 0x0a, 0xe6, 0x0b, 0xf1, 0xea,
-	0x41, 0x4c, 0x83, 0xe8, 0x96, 0x42, 0xe5, 0x26, 0xb1, 0x81, 0x2d, 0x31, 0x06, 0x04, 0x00, 0x00,
-	0xff, 0xff, 0x7b, 0x76, 0x5c, 0x94, 0x79, 0x00, 0x00, 0x00,
+	0x41, 0x4c, 0x83, 0xe8, 0x96, 0x42, 0xe5, 0x0a, 0x69, 0x73, 0xb1, 0x3b, 0x67, 0x24, 0xe6, 0xe5,
+	0xa5, 0xe6, 0xe0, 0x57, 0xa8, 0xc1, 0x68, 0xc0, 0x98, 0xc4, 0x06, 0x76, 0x91, 0x31, 0x20, 0x00,
+	0x00, 0xff, 0xff, 0xb2, 0xe6, 0x83, 0x67, 0xa6, 0x00, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -93,6 +94,7 @@ const _ = grpc.SupportPackageIsVersion4
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type HelloServiceClient interface {
 	Hello(ctx context.Context, in *String, opts ...grpc.CallOption) (*String, error)
+	Channel(ctx context.Context, opts ...grpc.CallOption) (HelloService_ChannelClient, error)
 }
 
 type helloServiceClient struct {
@@ -112,9 +114,41 @@ func (c *helloServiceClient) Hello(ctx context.Context, in *String, opts ...grpc
 	return out, nil
 }
 
+func (c *helloServiceClient) Channel(ctx context.Context, opts ...grpc.CallOption) (HelloService_ChannelClient, error) {
+	stream, err := c.cc.NewStream(ctx, &_HelloService_serviceDesc.Streams[0], "/hello.HelloService/Channel", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &helloServiceChannelClient{stream}
+	return x, nil
+}
+
+type HelloService_ChannelClient interface {
+	Send(*String) error
+	Recv() (*String, error)
+	grpc.ClientStream
+}
+
+type helloServiceChannelClient struct {
+	grpc.ClientStream
+}
+
+func (x *helloServiceChannelClient) Send(m *String) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *helloServiceChannelClient) Recv() (*String, error) {
+	m := new(String)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // HelloServiceServer is the server API for HelloService service.
 type HelloServiceServer interface {
 	Hello(context.Context, *String) (*String, error)
+	Channel(HelloService_ChannelServer) error
 }
 
 // UnimplementedHelloServiceServer can be embedded to have forward compatible implementations.
@@ -123,6 +157,9 @@ type UnimplementedHelloServiceServer struct {
 
 func (*UnimplementedHelloServiceServer) Hello(ctx context.Context, req *String) (*String, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Hello not implemented")
+}
+func (*UnimplementedHelloServiceServer) Channel(srv HelloService_ChannelServer) error {
+	return status.Errorf(codes.Unimplemented, "method Channel not implemented")
 }
 
 func RegisterHelloServiceServer(s *grpc.Server, srv HelloServiceServer) {
@@ -147,6 +184,32 @@ func _HelloService_Hello_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
+func _HelloService_Channel_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(HelloServiceServer).Channel(&helloServiceChannelServer{stream})
+}
+
+type HelloService_ChannelServer interface {
+	Send(*String) error
+	Recv() (*String, error)
+	grpc.ServerStream
+}
+
+type helloServiceChannelServer struct {
+	grpc.ServerStream
+}
+
+func (x *helloServiceChannelServer) Send(m *String) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *helloServiceChannelServer) Recv() (*String, error) {
+	m := new(String)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 var _HelloService_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "hello.HelloService",
 	HandlerType: (*HelloServiceServer)(nil),
@@ -156,6 +219,13 @@ var _HelloService_serviceDesc = grpc.ServiceDesc{
 			Handler:    _HelloService_Hello_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "Channel",
+			Handler:       _HelloService_Channel_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
+		},
+	},
 	Metadata: "hello/hello.proto",
 }
